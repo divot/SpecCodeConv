@@ -14,14 +14,15 @@ add_clang_executable(SpecCodeConv
                      BaseASTConsumer.cpp
                      DirectiveFinder.cpp
                      DeclExtractor.cpp
+                     DeclTracker.cpp
                      NoEditStmtPrinter.cpp
                      StmtPrinter.cpp
                      DirectiveList.cpp
-                     FunctionCallList.cpp
-                     DeclRefExtractor.cpp
                      VarCollector.cpp
                      VarTraverser.cpp
                      DirectiveHandler.cpp
+                     FakeDirectiveHandler.cpp
+                     DeclLinker.cpp
                     )
 
 set_target_properties(SpecCodeConv
