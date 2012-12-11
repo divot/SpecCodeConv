@@ -35,8 +35,8 @@ void NoEditStmtPrinter::PrintRawDecl(Decl *D) {
   D->print(OS, Policy, IndentLevel);
 }
 
-void NoEditStmtPrinter::PrintRawDeclStmt(DeclStmt *S) {
-  DeclStmt::decl_iterator Begin = S->decl_begin(), End = S->decl_end();
+void NoEditStmtPrinter::PrintRawDeclStmt(const DeclStmt *S) {
+  DeclStmt::const_decl_iterator Begin = S->decl_begin(), End = S->decl_end();
   SmallVector<Decl*, 2> Decls;
   for ( ; Begin != End; ++Begin)
     Decls.push_back(*Begin);
@@ -101,7 +101,10 @@ void NoEditStmtPrinter::VisitAttributedStmt(AttributedStmt *Node) {
 
 void NoEditStmtPrinter::PrintRawIfStmt(IfStmt *If) {
   OS << "if (";
-  PrintExpr(If->getCond());
+  if (const DeclStmt *DS = If->getConditionVariableDeclStmt())
+    PrintRawDeclStmt(DS);
+  else
+    PrintExpr(If->getCond());
   OS << ')';
 
   if (CompoundStmt *CS = dyn_cast<CompoundStmt>(If->getThen())) {
@@ -138,7 +141,10 @@ void NoEditStmtPrinter::VisitIfStmt(IfStmt *If) {
 
 void NoEditStmtPrinter::VisitSwitchStmt(SwitchStmt *Node) {
   Indent() << "switch (";
-  PrintExpr(Node->getCond());
+  if (const DeclStmt *DS = Node->getConditionVariableDeclStmt())
+    PrintRawDeclStmt(DS);
+  else
+    PrintExpr(Node->getCond());
   OS << ")";
 
   // Pretty print compoundstmt bodies (very common).
@@ -154,7 +160,10 @@ void NoEditStmtPrinter::VisitSwitchStmt(SwitchStmt *Node) {
 
 void NoEditStmtPrinter::VisitWhileStmt(WhileStmt *Node) {
   Indent() << "while (";
-  PrintExpr(Node->getCond());
+  if (const DeclStmt *DS = Node->getConditionVariableDeclStmt())
+    PrintRawDeclStmt(DS);
+  else
+    PrintExpr(Node->getCond());
   OS << ")\n";
   PrintStmt(Node->getBody());
 }
@@ -819,10 +828,18 @@ void NoEditStmtPrinter::VisitCallExpr(CallExpr *Call) {
 void NoEditStmtPrinter::VisitMemberExpr(MemberExpr *Node) {
   // FIXME: Suppress printing implicit bases (like "this")
   PrintExpr(Node->getBase());
+
+  MemberExpr *ParentMember = dyn_cast<MemberExpr>(Node->getBase());
+  FieldDecl  *ParentDecl   = ParentMember
+    ? dyn_cast<FieldDecl>(ParentMember->getMemberDecl()) : NULL;
+
+  if (!ParentDecl || !ParentDecl->isAnonymousStructOrUnion())
+    OS << (Node->isArrow() ? "->" : ".");
+
   if (FieldDecl *FD = dyn_cast<FieldDecl>(Node->getMemberDecl()))
     if (FD->isAnonymousStructOrUnion())
       return;
-  OS << (Node->isArrow() ? "->" : ".");
+
   if (NestedNameSpecifier *Qualifier = Node->getQualifier())
     Qualifier->print(OS, Policy);
   if (Node->hasTemplateKeyword())
@@ -1056,6 +1073,8 @@ void NoEditStmtPrinter::VisitCXXOperatorCallExpr(CXXOperatorCallExpr *Node) {
       PrintExpr(Node->getArg(0));
       OS << ' ' << OpStrings[Kind];
     }
+  } else if (Kind == OO_Arrow) {
+    PrintExpr(Node->getArg(0));
   } else if (Kind == OO_Call) {
     PrintExpr(Node->getArg(0));
     OS << '(';
@@ -1330,10 +1349,12 @@ void NoEditStmtPrinter::VisitCXXNewExpr(CXXNewExpr *E) {
     OS << "::";
   OS << "new ";
   unsigned NumPlace = E->getNumPlacementArgs();
-  if (NumPlace > 0) {
+  if (NumPlace > 0 && !isa<CXXDefaultArgExpr>(E->getPlacementArg(0))) {
     OS << "(";
     PrintExpr(E->getPlacementArg(0));
     for (unsigned i = 1; i < NumPlace; ++i) {
+      if (isa<CXXDefaultArgExpr>(E->getPlacementArg(i)))
+        break;
       OS << ", ";
       PrintExpr(E->getPlacementArg(i));
     }
@@ -1380,6 +1401,7 @@ void NoEditStmtPrinter::VisitCXXPseudoDestructorExpr(CXXPseudoDestructorExpr *E)
     OS << '.';
   if (E->getQualifier())
     E->getQualifier()->print(OS, Policy);
+  OS << "~";
 
   std::string TypeS;
   if (IdentifierInfo *II = E->getDestroyedTypeIdentifier())

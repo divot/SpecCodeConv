@@ -7,13 +7,14 @@
 #define _STMTPRINTER_H_
 
 #include "clang/AST/ASTContext.h"
-#include "clang/AST/StmtVisitor.h"
+#include "clang/AST/Attr.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/DeclObjC.h"
 #include "clang/AST/DeclTemplate.h"
-#include "clang/AST/PrettyPrinter.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
+#include "clang/AST/PrettyPrinter.h"
+#include "clang/AST/StmtVisitor.h"
 #include "llvm/ADT/SmallString.h"
 using namespace clang;
 
@@ -55,7 +56,7 @@ namespace speculation {
 
     void PrintRawCompoundStmt(CompoundStmt *S);
     void PrintRawDecl(Decl *D);
-    void PrintRawDeclStmt(DeclStmt *S);
+    void PrintRawDeclStmt(const DeclStmt *S);
     void PrintRawIfStmt(IfStmt *If);
     void PrintRawCXXCatchStmt(CXXCatchStmt *Catch);
     void PrintCallArgs(CallExpr *E);
