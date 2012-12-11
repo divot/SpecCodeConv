@@ -148,7 +148,7 @@ int main(int argc, char *argv[]) {
 
     TargetOptions to;
     to.Triple = llvm::sys::getDefaultTargetTriple();
-    TargetInfo *pti = TargetInfo::CreateTargetInfo(Diags, to);
+    TargetInfo *pti = TargetInfo::CreateTargetInfo(Diags, &to);
     CI.setTarget(pti);
 
     CI.createFileManager();
